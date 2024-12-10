@@ -98,3 +98,17 @@ def schro_plot(x, t, psi_xt, plot_type='psi', time_index=0):
     plt.savefig("NairMalavika_Project4_Fig1")
 
     plt.show()
+
+nspace = 400
+ntime = 1000
+tau = 0.1
+
+psi_xt_ftcs, x_ftcs, t_ftcs, prob_ftcs = sch_eqn(nspace, ntime, tau, method='ftcs')
+psi_xt_crank, x_crank, t_crank, prob_crank = sch_eqn(nspace, ntime, tau, method='crank')
+schro_plot(x_ftcs, t_ftcs, psi_xt_ftcs, plot_type='psi', time_index=-1)
+
+schro_plot(x_ftcs, t_ftcs, psi_xt_ftcs, plot_type='prob', time_index=-1)
+
+schro_plot(x_crank, t_crank, psi_xt_crank, plot_type='psi', time_index=-1)
+
+schro_plot(x_crank, t_crank, psi_xt_crank, plot_type='prob', time_index=-1)
