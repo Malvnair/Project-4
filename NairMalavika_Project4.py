@@ -73,19 +73,25 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     return psi_xt, x, t
 
 
-def schro_plot(x, t, psi_xt, plot_type, time_index):
-    plt.figure()
+def schro_plot(x, t, psi_xt, plot_type, time=None):
+    if time is None:
+        raise ValueError("You must specify a time for the plot.")
+    
+    time_index = np.abs(t - time).argmin()
 
+    plt.figure()
     if plot_type.lower() == 'psi':
         plt.plot(x, np.real(psi_xt[:, time_index]), label='Real')
         plt.title(f'Real Part of Wavefunction at t={t[time_index]:.3f}')
         plt.ylabel('Re[ψ(x)]')
     elif plot_type.lower() == 'prob':
-        prob_density = np.abs(psi_xt[:, time_index]) ** 2  
+        prob_density = np.abs(psi_xt[:, time_index]) ** 2
         plt.plot(x, prob_density, label='|ψ|²')
         plt.title(f'Probability Density at t={t[time_index]:.3f}')
         plt.ylabel('Probability density')
-
+    else:
+        raise ValueError("Invalid plot_type. Use 'psi' or 'prob'.")
+    
     plt.xlabel('x')
     plt.grid(True)
     plt.legend()
@@ -102,8 +108,8 @@ tau = 0.001
 length = 200
 potential = []
 wparam = [10, 0, 0.5]
-time_index = 0
+time = 0.3
 
 psi_xt, x, t = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
 
-schro_plot(x, t, psi_xt, plot_type=plot_type, time_index=time_index)
+schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
