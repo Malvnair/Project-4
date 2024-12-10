@@ -2,10 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def max_abs_eigenvalue(A):
+    eigenvalues, _ = np.linalg.eig(A)
+    return max(abs(eigenvalues))
+
+
 def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=[10, 0, 0.5]):
-    h_bar = 1.0
-    mass = 0.5  
-    
+    h_bar = 1
+    mass = 0.5
     
     h = length / (nspace - 1)
     x = np.linspace(-length / 2, length / 2, nspace)
@@ -23,7 +27,7 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     psi0 = Norm * np.exp(-(x - x0)**2/(2*sigma0**2)) * np.exp(1j*k0*x)
 
     ham = np.zeros((nspace, nspace), dtype=complex)  
-    coeff = -1.0/h**2  
+    coeff = -h_bar**2 / (2 * mass * h**2)
 
     for i in range(1, nspace-1):
         ham[i, i-1] = coeff
@@ -40,10 +44,13 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     psi = psi0.copy()
 
     if method.lower() == 'ftcs':
-            if tau >= h**2:
-                print("FTCS scheme unstable.")
-                prob = np.array([np.sum(np.abs(psi0)**2)])
-                return psi_xt, x, t, prob
+        M = np.eye(nspace, dtype=complex) + (-1j * tau) * H
+        max = max_abs_eigenvalue(M)
+        # Check stability
+        if max > 1:
+            print("FTCS scheme is unstable.")
+            stable = False 
+            return psi_xt, x, t, np.array([np.sum(np.abs(psi0)**2)]), stable
     elif method.lower() == 'crank':
         # Crank-Nicolson matrices
         A = np.eye(nspace, dtype=complex) + 0.5j*tau*H
@@ -69,7 +76,11 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
 
     return psi_xt, x, t, prob
 
-def schro_plot(x, t, psi_xt, plot_type='psi', time_index=0):
+def schro_plot(x, t, psi_xt, plot_type='psi', time_index=0, stable=True):
+    if not stable:
+        print("Plotting skipped due to instability in the FTCS method.")
+        return  # Exit the function without plotting
+   
     plt.figure()
 
     if plot_type.lower() == 'psi':
@@ -90,16 +101,16 @@ def schro_plot(x, t, psi_xt, plot_type='psi', time_index=0):
 
     plt.show()
 
-nspace = 400
-ntime = 1000
-tau = 0.1
+nspace = 800
+ntime = 500
+tau = 0.01
+length = 200
+potential = []
+wparam = [10, 0, 0.5]
 
-psi_xt_ftcs, x_ftcs, t_ftcs, prob_ftcs = sch_eqn(nspace, ntime, tau, method='ftcs')
-psi_xt_crank, x_crank, t_crank, prob_crank = sch_eqn(nspace, ntime, tau, method='crank')
-schro_plot(x_ftcs, t_ftcs, psi_xt_ftcs, plot_type='psi', time_index=-1)
+# Solve the Schrödinger Equation
+psi_xt, x, t, prob, stable = sch_eqn(nspace, ntime, tau, method='ftcs', length=length, potential=potential, wparam=wparam)
 
-schro_plot(x_ftcs, t_ftcs, psi_xt_ftcs, plot_type='prob', time_index=-1)
-
-schro_plot(x_crank, t_crank, psi_xt_crank, plot_type='psi', time_index=-1)
-
-schro_plot(x_crank, t_crank, psi_xt_crank, plot_type='prob', time_index=-1)
+# Call the plotting function
+schro_plot(x, t, psi_xt, plot_type='psi', time_index=0, stable=stable)
+schro_plot(x, t, psi_xt, plot_type='prob', time_index=0, stable=stable)
