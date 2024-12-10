@@ -66,7 +66,7 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
 
     # Time-stepping loop
     for itime in range(1, ntime+1):
-        if method.lower() == 'ftcs':
+        if method.lower() == 'ftcs':    
             psi = psi + (-1j * tau) * np.dot(H, psi)
         else:
             rhs = np.dot(B, psi)    
@@ -77,3 +77,24 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
         prob[itime] = np.sum(np.abs(psi)**2)
 
     return psi_xt, x, t, prob
+
+def schro_plot(x, t, psi_xt, plot_type='psi', time_index=0):
+    plt.figure()
+
+    if plot_type.lower() == 'psi':
+        plt.plot(x, np.real(psi_xt[:, time_index]), label='Real')
+        plt.plot(x, np.imag(psi_xt[:, time_index]), '--', label='Imag')
+        plt.title(f'Wavefunction at t={t[time_index]:.3f}')
+        plt.ylabel('Wavefunction')
+    elif plot_type.lower() == 'prob':
+        plt.plot(x, np.abs(psi_xt[:, time_index])**2, label='|ψ|²')
+        plt.title(f'Probability Density at t={t[time_index]:.3f}')
+        plt.ylabel('Probability density')
+
+    plt.xlabel('x')
+    plt.grid(True)
+    plt.legend()
+
+    plt.savefig("NairMalavika_Project4_Fig1")
+
+    plt.show()
