@@ -60,3 +60,20 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
         A_inv = np.linalg.inv(A)
     else:
         raise ValueError("Method must be 'ftcs' or 'crank'.")
+
+    prob = np.zeros(ntime+1)
+    prob[0] = np.sum(np.abs(psi)**2)
+
+    # Time-stepping loop
+    for itime in range(1, ntime+1):
+        if method.lower() == 'ftcs':
+            psi = psi + (-1j * tau) * np.dot(H, psi)
+        else:
+            rhs = np.dot(B, psi)    
+            psi = np.dot(A_inv, rhs)  
+
+        psi_xt[:, itime] = psi
+
+        prob[itime] = np.sum(np.abs(psi)**2)
+
+    return psi_xt, x, t, prob
