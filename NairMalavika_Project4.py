@@ -7,9 +7,9 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     mass = 0.5  
     
     
-    N = int(input('Enter number of grid points: '))
-    h = length/(nspace-1)
-    x = np.arange(N)*h - length/2. 
+    h = length / (nspace - 1)
+    x = np.linspace(-length / 2, length / 2, nspace)
+
     t = np.linspace(0, ntime*tau, ntime+1)
 
     V = np.zeros(nspace)
