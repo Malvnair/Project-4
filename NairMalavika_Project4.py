@@ -44,13 +44,16 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     psi = psi0.copy()
 
     if method.lower() == 'ftcs':
-        M = np.eye(nspace, dtype=complex) + (-1j * tau) * H
-        max = max_abs_eigenvalue(M)
-        # Check stability
-        if max > 1:
-            print("FTCS scheme is unstable.")
-            stable = False 
+        # Construct the evolution matrix
+        M = np.eye(H.shape[0]) + (-1j * tau / h_bar) * H
+
+        # Perform spectral radius check
+        radius = max_abs_eigenvalue(M)
+        if radius > 1:
+            print(f"FTCS scheme is unstable. Spectral radius: {radius:.2f}")
+            stable = False
             return psi_xt, x, t, np.array([np.sum(np.abs(psi0)**2)]), stable
+
     elif method.lower() == 'crank':
         # Crank-Nicolson matrices
         A = np.eye(nspace, dtype=complex) + 0.5j*tau*H
@@ -103,7 +106,7 @@ def schro_plot(x, t, psi_xt, plot_type='psi', time_index=0, stable=True):
 
 nspace = 800
 ntime = 500
-tau = 0.01
+tau = 0.001
 length = 200
 potential = []
 wparam = [10, 0, 0.5]
