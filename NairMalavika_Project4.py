@@ -40,19 +40,10 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     psi = psi0.copy()
 
     if method.lower() == 'ftcs':
-        # Compute eigenvalues for stability check
-        eigvals = np.linalg.eigvals(H)
-        # Check stability condition: |1 - iτλ| ≤ 1 for all λ
-        stable = True
-        for eigenvalue in eigvals:
-            U = 1.0 - 1j*tau*eigenvalue
-            if np.abs(U) > 1.0:
-                stable = False
-                break
-        if not stable:
-            print("FTCS scheme unstable")
-            prob = np.array([np.sum(np.abs(psi0)**2)])
-            return psi_xt, x, t, prob
+            if tau >= h**2:
+                print("FTCS scheme unstable.")
+                prob = np.array([np.sum(np.abs(psi0)**2)])
+                return psi_xt, x, t, prob
     elif method.lower() == 'crank':
         # Crank-Nicolson matrices
         A = np.eye(nspace, dtype=complex) + 0.5j*tau*H
