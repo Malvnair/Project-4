@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Code modified from NairMalavika_SamoylovaAlona_Lab10.py
 def max_abs_eigenvalue(A):
     """
     Computes the maximum absolute eigenvalue of a given matrix.
@@ -33,6 +34,7 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
         x: Spatial grid points.
         t: Time grid points.
     """
+    # Code is modified from the schro.py code from the NM4P programs
     # Define constants for the problem
     h_bar = 1
     mass = 0.5
@@ -72,25 +74,11 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     # Add potential to the Hamiltonian
     H = ham + np.diag(V)
     
-    # Print Hamiltonian to verify its structure
-    print("Hamiltonian H:")
-    print(H)
-
-    # Check if periodic boundary conditions are correctly applied
-    print("Periodic boundary conditions:")
-    print(f"H[0, -1]: {H[0, -1]}, H[-1, 0]: {H[-1, 0]}")
-
-    # Check if potential is added correctly
-    print("Potential V added to diagonal of H:")
-    print(np.diag(H))
+    # Normalize H
+    eigenvalues_H, _ = np.linalg.eig(H)
+    H_normalized = H / max(abs(eigenvalues_H))
 
     eigenvalues_H, _ = np.linalg.eig(H)
-    print("Eigenvalues of H:")
-    print(eigenvalues_H)
-
-    # Check the maximum eigenvalue of H
-    max_eigenvalue_H = max(abs(eigenvalues_H))
-    print(f"Maximum absolute eigenvalue of H: {max_eigenvalue_H}")
 
     # Initialize wavefunction storage
     psi_xt = np.zeros((nspace, ntime + 1), dtype=complex)
@@ -100,7 +88,7 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     # Choose numerical method
     if method.lower() == 'ftcs':
         # Construct the evolution matrix
-        M = np.eye(H.shape[0]) + (-1j * tau / h_bar) * H
+        M = np.eye(H.shape[0]) + (-1j * tau / h_bar) * H_normalized
 
         # Check for stability of the FTCS method
         radius = max_abs_eigenvalue(M)
@@ -116,22 +104,7 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     else:
         raise ValueError("Method must be 'ftcs' or 'crank'.")
 
-    # Print the evolution matrix M
-    print("Evolution Matrix M:")
-    print(M)
-
-    # Print eigenvalues of M to debug spectral radius
-    eigenvalues, _ = np.linalg.eig(M)
-    print("Eigenvalues of M:")
-    print(eigenvalues)
-
-    # Print spectral radius
-    radius = max(abs(eigenvalues))
-    print(f"Spectral Radius of M: {radius}")
-
-
-
-
+    # Code is modified from the schro.py code from the NM4P programs
     # Perform time-stepping
     for itime in range(1, ntime + 1):
         if method.lower() == 'ftcs':    
@@ -162,6 +135,7 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
     if time is None:
         raise ValueError("You must specify a time for the plot.")
     
+    # Code is modified from the schro.py code from the NM4P programs
     # Determine the closest time index
     time_index = np.abs(t - time).argmin()
 
@@ -201,24 +175,6 @@ wparam = [10, 0, 0.5]
 time = 0.3
 
 
-# Define a small test matrix
-H_test = np.array([[2, -1, 0],
-                   [-1, 2, -1],
-                   [0, -1, 2]], dtype=complex)
-
-# Define parameters
-tau_test = 0.1
-hbar_test = 1
-
-# Construct M for the test case
-M_test = np.eye(H_test.shape[0]) + (-1j * tau_test / hbar_test) * H_test
-print("Test Evolution Matrix M:")
-print(M_test)
-
-# Compute spectral radius
-eigenvalues_test, _ = np.linalg.eig(M_test)
-radius_test = max(abs(eigenvalues_test))
-print(f"Spectral Radius of Test M: {radius_test}")
 
 
 # Solve the Schrödinger equation
@@ -226,10 +182,4 @@ psi_xt, x, t = sch_eqn(nspace, ntime, tau, method, length=length, potential=pote
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
-
-
-# Print the scaling of the coefficients in H
-print(f"h: {length / (nspace - 1)}")
-print(f"tau / h: {tau / (length / (nspace - 1))}")
-
 
