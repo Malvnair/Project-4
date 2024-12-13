@@ -71,6 +71,19 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
 
     # Add potential to the Hamiltonian
     H = ham + np.diag(V)
+    
+    # Print Hamiltonian to verify its structure
+    print("Hamiltonian H:")
+    print(H)
+
+    # Check if periodic boundary conditions are correctly applied
+    print("Periodic boundary conditions:")
+    print(f"H[0, -1]: {H[0, -1]}, H[-1, 0]: {H[-1, 0]}")
+
+    # Check if potential is added correctly
+    print("Potential V added to diagonal of H:")
+    print(np.diag(H))
+
 
     # Initialize wavefunction storage
     psi_xt = np.zeros((nspace, ntime + 1), dtype=complex)
@@ -84,7 +97,7 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
 
         # Check for stability of the FTCS method
         radius = max_abs_eigenvalue(M)
-        if radius > 1:
+        if radius -1 > 1e-8:
             print(f"FTCS scheme is unstable. Spectral radius: {radius:.2f}")
             return psi_xt, x, t
 
@@ -95,6 +108,20 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
         A_inv = np.linalg.inv(A)
     else:
         raise ValueError("Method must be 'ftcs' or 'crank'.")
+
+    # Print the evolution matrix M
+    print("Evolution Matrix M:")
+    print(M)
+
+    # Print eigenvalues of M to debug spectral radius
+    eigenvalues, _ = np.linalg.eig(M)
+    print("Eigenvalues of M:")
+    print(eigenvalues)
+
+    # Print spectral radius
+    radius = max(abs(eigenvalues))
+    print(f"Spectral Radius of M: {radius}")
+
 
     # Perform time-stepping
     for itime in range(1, ntime + 1):
@@ -158,14 +185,37 @@ plot_type = input("Enter the plot type ('psi' for real part of the wavefunction 
 # Simulation parameters
 nspace = 2000
 ntime = 300
-tau = 0.001
+tau = 0.0001
 length = 200
 potential = []
 wparam = [10, 0, 0.5]
 time = 0.3
+
+
+# Define a small test matrix
+H_test = np.array([[2, -1, 0],
+                   [-1, 2, -1],
+                   [0, -1, 2]], dtype=complex)
+
+# Define parameters
+tau_test = 0.1
+hbar_test = 1
+
+# Construct M for the test case
+M_test = np.eye(H_test.shape[0]) + (-1j * tau_test / hbar_test) * H_test
+print("Test Evolution Matrix M:")
+print(M_test)
+
+# Compute spectral radius
+eigenvalues_test, _ = np.linalg.eig(M_test)
+radius_test = max(abs(eigenvalues_test))
+print(f"Spectral Radius of Test M: {radius_test}")
+
 
 # Solve the Schrödinger equation
 psi_xt, x, t = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
+
+
