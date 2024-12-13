@@ -84,6 +84,13 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     print("Potential V added to diagonal of H:")
     print(np.diag(H))
 
+    eigenvalues_H, _ = np.linalg.eig(H)
+    print("Eigenvalues of H:")
+    print(eigenvalues_H)
+
+    # Check the maximum eigenvalue of H
+    max_eigenvalue_H = max(abs(eigenvalues_H))
+    print(f"Maximum absolute eigenvalue of H: {max_eigenvalue_H}")
 
     # Initialize wavefunction storage
     psi_xt = np.zeros((nspace, ntime + 1), dtype=complex)
@@ -121,6 +128,8 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     # Print spectral radius
     radius = max(abs(eigenvalues))
     print(f"Spectral Radius of M: {radius}")
+
+
 
 
     # Perform time-stepping
@@ -217,5 +226,10 @@ psi_xt, x, t = sch_eqn(nspace, ntime, tau, method, length=length, potential=pote
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
+
+
+# Print the scaling of the coefficients in H
+print(f"h: {length / (nspace - 1)}")
+print(f"tau / h: {tau / (length / (nspace - 1))}")
 
 
