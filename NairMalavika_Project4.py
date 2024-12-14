@@ -111,7 +111,6 @@ def create_hamiltonian(nspace, h, potential):
 
 
 
-# Code is modified from the schro.py code from the NM4P programs
 def solve_schrodinger(psi0, H, nspace, ntime, tau, method):
     """
     Solves the Schrödinger equation using the specified method.
@@ -126,9 +125,12 @@ def solve_schrodinger(psi0, H, nspace, ntime, tau, method):
         
     Returns:
         psi_xt: Complex array representing the wavefunction over time.
+        total_prob: Array of total probabilities at each timestep.
     """
     psi_xt = np.zeros((nspace, ntime + 1), dtype=complex)
+    total_prob = np.zeros(ntime + 1)
     psi_xt[:, 0] = psi0
+    total_prob[0] = np.sum(np.abs(psi0) ** 2)
     psi = psi0.copy()
     
     if method == 'ftcs':
@@ -147,12 +149,13 @@ def solve_schrodinger(psi0, H, nspace, ntime, tau, method):
             rhs = np.dot(B, psi)
             psi = np.dot(A_inv, rhs)
         psi_xt[:, itime] = psi
+        total_prob[itime] = np.sum(np.abs(psi) ** 2)
     
-    return psi_xt
+    return psi_xt, total_prob
 
 
 
-# Code is modified from the schro.py code from the NM4P programs
+
 def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=[10, 0, 0.5]):
     """
     Solves the time-dependent Schrödinger equation using specified parameters.
@@ -170,14 +173,15 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
         psi_xt (ndarray): Complex 2D array representing the wavefunction at each time step.
         x (ndarray): Array of spatial grid points.
         t (ndarray): Array of time grid points.
+        total_prob (ndarray): 1D array representing the total probability at each timestep.
     """
     x, h = create_spatial_grid(nspace, length)
     V = create_potential(nspace, potential)
     H = create_hamiltonian(nspace, h, V)
     psi0 = initialize_wave_packet(x, wparam)
-    psi_xt = solve_schrodinger(psi0, H, nspace, ntime, tau, method)
+    psi_xt, total_prob = solve_schrodinger(psi0, H, nspace, ntime, tau, method)
     t = np.linspace(0, ntime * tau, ntime + 1)
-    return psi_xt, x, t
+    return psi_xt, x, t, total_prob
 
 
 # Code is modified from the schro.py code from the NM4P programs
@@ -239,7 +243,7 @@ time = 0.3
 
 
 # Solve the Schrödinger equation
-psi_xt, x, t = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
+psi_xt, x, t, _ = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
