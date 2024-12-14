@@ -1,25 +1,9 @@
-"""
-This program numerically solves the time-dependent Schrödinger equation for a one-dimensional system 
-using two different methods: Forward Time Centered Space (FTCS) and Crank-Nicholson. It provides a 
-visualization of the real part of the wavefunction or the probability density over a specified time.
-
-Outputs:
-1. A plot of the real part of the wavefunction (ψ) or the probability density (|ψ|²) at a specified time.
-2. A plot showing the total probability over time to ensure conservation.
-
-
-"""
-
-
-
 import numpy as np
 import matplotlib.pyplot as plt
-
 
 # Constants for the problem
 h_bar = 1
 mass = 0.5
-
 
 # Code modified from NairMalavika_SamoylovaAlona_Lab10.py
 def max_abs_eigenvalue(A):
@@ -34,7 +18,6 @@ def max_abs_eigenvalue(A):
     """
     eigenvalues, _ = np.linalg.eig(A)
     return max(abs(eigenvalues))
-
 
 # Code is modified from the schro.py code from the NM4P programs
 def create_spatial_grid(nspace, length):
@@ -52,8 +35,6 @@ def create_spatial_grid(nspace, length):
     h = length / (nspace - 1)
     x = np.linspace(-length / 2, length / 2, nspace)
     return x, h
-
-
 
 # Code is modified from the schro.py code from the NM4P programs
 def initialize_wave_packet(x, wparam, h):
@@ -80,8 +61,6 @@ def initialize_wave_packet(x, wparam, h):
     return psi0
 
 
-
-
 def create_potential(nspace, potential_indices):
     """
     Creates the potential energy array.
@@ -101,8 +80,6 @@ def create_potential(nspace, potential_indices):
         if 0 <= index < nspace:
             V[index] = 1.0
     return V
-
-
 
 # Code is modified from the schro.py code from the NM4P programs
 def create_hamiltonian(nspace, h, potential):
@@ -133,11 +110,13 @@ def create_hamiltonian(nspace, h, potential):
 
     # Add potential
     H = ham + np.diag(potential)
-    return H
+    # Normalize H
+    eigenvalues_H, _ = np.linalg.eig(H)
+    H_normalized = H / max(abs(eigenvalues_H))
+    return H_normalized
 
 
-
-def solve_schrodinger(psi0, H, nspace, ntime, tau, method, h):
+def solve_schrodinger(psi0, H_normalized, nspace, ntime, tau, method, h):
     """
     Solves the Schrödinger equation using the specified method.
     
@@ -163,23 +142,30 @@ def solve_schrodinger(psi0, H, nspace, ntime, tau, method, h):
     total_prob[0] = np.sum(np.abs(psi0) ** 2) * h  # Include h
     psi = psi0.copy()
     
-    # Set up method statements
-    if method == 'ftcs':
-        H_coeff = (-1j * tau / h_bar) * H
+    # Choose numerical method
+    if method.lower() == 'ftcs':
+        # Construct the evolution matrix
+        M = np.eye(H_normalized.shape[0]) + (-1j * tau / h_bar) * H_normalized
+
+        # Check for stability of the FTCS method
+        radius = max_abs_eigenvalue(M)
+        if radius - 1 > 1e-3:
+            raise ValueError(f"FTCS scheme is unstable. Spectral radius: {radius:.2f}.")
+
+        H_coeff = (-1j * tau / h_bar) * H_normalized
         
-    elif method == 'crank':
-        A = np.eye(nspace, dtype=complex) + 0.5j * tau * H
-        B = np.eye(nspace, dtype=complex) - 0.5j * tau * H
+    elif method.lower() == 'crank':
+        A = np.eye(nspace, dtype=complex) + 0.5j * tau * H_normalized
+        B = np.eye(nspace, dtype=complex) - 0.5j * tau * H_normalized
         A_inv = np.linalg.inv(A)
     else:
         raise ValueError("Invalid method. Choose 'ftcs' or 'crank'.")
     
     # Time evolution loop
     for itime in range(1, ntime + 1):
-        if method == 'ftcs':
+        if method.lower() == 'ftcs':
             # Update wavefunction using FTCS method
             psi = psi + np.dot(H_coeff, psi)
-            
         else:  # Crank-Nicholson
             # Solve matrix equation for next timestep
             rhs = np.dot(B, psi)
@@ -188,8 +174,6 @@ def solve_schrodinger(psi0, H, nspace, ntime, tau, method, h):
         total_prob[itime] = np.sum(np.abs(psi) ** 2) * h 
     
     return psi_xt, total_prob
-
-
 
 
 def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=[10, 0, 0.5]):
@@ -215,14 +199,13 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     # Generate spatial grid, potential, Hamiltonian, and initial wavefunction
     x, h = create_spatial_grid(nspace, length)
     V = create_potential(nspace, potential)
-    H = create_hamiltonian(nspace, h, V)
+    H_normalized = create_hamiltonian(nspace, h, V)
     psi0 = initialize_wave_packet(x, wparam, h)
     
     # Solve the Schrödinger equation and return results
-    psi_xt, total_prob = solve_schrodinger(psi0, H, nspace, ntime, tau, method, h)
+    psi_xt, total_prob = solve_schrodinger(psi0, H_normalized, nspace, ntime, tau, method, h)
     t = np.linspace(0, ntime * tau, ntime + 1)
     return psi_xt, x, t, total_prob
-
 
 # Code is modified from the schro.py code from the NM4P programs
 def schro_plot(x, t, psi_xt, plot_type, time=None):
@@ -267,15 +250,13 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
     plt.legend()
     plt.show()
 
-
 # User Input for Method, Plot Type, and Time Index
 method = input("Enter the numerical method ('ftcs' or 'crank'): ").strip().lower()
 plot_type = input("Enter the plot type ('psi' for real part of the wavefunction or 'prob' for probability density): ").strip().lower()
 # Extra
 show_plot = input("Display Total probability plot? (y/n): ").strip().lower()
 
-
-#Simulation parameters
+# Simulation parameters
 nspace = 2000
 ntime = 300
 tau = 0.0001
@@ -284,15 +265,11 @@ potential = []
 wparam = [10, 0, 0.5]
 time = 0.3
 
-
 # Solve the Schrödinger equation
 psi_xt, x, t, total_prob = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
-
-
-
 
 # Quick plot for total probability conservation
 if show_plot == 'y':
@@ -306,4 +283,3 @@ if show_plot == 'y':
     plt.grid(True)
     plt.legend()
     plt.show()
-
