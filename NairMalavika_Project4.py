@@ -1,5 +1,24 @@
+"""
+This program numerically solves the time-dependent Schrödinger equation for a one-dimensional system 
+using two different methods: Forward Time Centered Space (FTCS) and Crank-Nicholson. It provides a 
+visualization of the real part of the wavefunction or the probability density over a specified time.
+
+Outputs:
+1. A plot of the real part of the wavefunction (ψ) or the probability density (|ψ|²) at a specified time.
+2. A plot showing the total probability over time to ensure conservation.
+
+
+"""
+
+
+
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+# Constants for the problem
+h_bar = 1
+mass = 0.5
 
 
 # Code modified from NairMalavika_SamoylovaAlona_Lab10.py
@@ -15,11 +34,6 @@ def max_abs_eigenvalue(A):
     """
     eigenvalues, _ = np.linalg.eig(A)
     return max(abs(eigenvalues))
-
-
-# Constants for the problem
-h_bar = 1
-mass = 0.5
 
 
 # Code is modified from the schro.py code from the NM4P programs
@@ -42,21 +56,29 @@ def create_spatial_grid(nspace, length):
 
 
 # Code is modified from the schro.py code from the NM4P programs
-def initialize_wave_packet(x, wparam):
+def initialize_wave_packet(x, wparam, h):
     """
-    Initializes the Gaussian wave packet.
-    
+    Initializes the Gaussian wave packet with proper normalization.
+
     Parameters:
         x: Spatial grid points.
         wparam: List of parameters [sigma0, x0, k0].
-        
+        h: Grid spacing.
+
     Returns:
-        psi0: Initial wavefunction.
+        psi0: Normalized initial wavefunction.
     """
     sigma0, x0, k0 = wparam
-    norm = 1.0 / (np.sqrt(sigma0 * np.sqrt(np.pi)))
-    psi0 = norm * np.exp(-(x - x0) ** 2 / (2 * sigma0 ** 2)) * np.exp(1j * k0 * x)
+    
+    # Construct the unnormalized Gaussian wave packet
+    unnormalized_psi0 = np.exp(-(x - x0) ** 2 / (2 * sigma0 ** 2)) * np.exp(1j * k0 * x)
+
+    # Normalize the wavefunction
+    norm = 1.0 / np.sqrt(np.sum(np.abs(unnormalized_psi0) ** 2) * h)
+    psi0 = norm * unnormalized_psi0
+        
     return psi0
+
 
 
 
@@ -71,8 +93,11 @@ def create_potential(nspace, potential_indices):
     Returns:
         V: Potential energy array.
     """
+    
+    # Initialize potential array
     V = np.zeros(nspace)
     for index in potential_indices:
+        # Apply potential only in valid indices
         if 0 <= index < nspace:
             V[index] = 1.0
     return V
@@ -93,6 +118,7 @@ def create_hamiltonian(nspace, h, potential):
         H: Hamiltonian matrix.
     """
     coeff = -h_bar ** 2 / (2 * mass * h ** 2)
+
     ham = np.zeros((nspace, nspace), dtype=complex)
     
     # Fill tridiagonal entries
@@ -111,7 +137,7 @@ def create_hamiltonian(nspace, h, potential):
 
 
 
-def solve_schrodinger(psi0, H, nspace, ntime, tau, method):
+def solve_schrodinger(psi0, H, nspace, ntime, tau, method, h):
     """
     Solves the Schrödinger equation using the specified method.
     
@@ -127,14 +153,20 @@ def solve_schrodinger(psi0, H, nspace, ntime, tau, method):
         psi_xt: Complex array representing the wavefunction over time.
         total_prob: Array of total probabilities at each timestep.
     """
+    
+    # Initialize wavefunction evolution and probability array
     psi_xt = np.zeros((nspace, ntime + 1), dtype=complex)
     total_prob = np.zeros(ntime + 1)
+    
+    # Set initial conditions
     psi_xt[:, 0] = psi0
-    total_prob[0] = np.sum(np.abs(psi0) ** 2)
+    total_prob[0] = np.sum(np.abs(psi0) ** 2) * h  # Include h
     psi = psi0.copy()
     
+    # Set up method statements
     if method == 'ftcs':
         H_coeff = (-1j * tau / h_bar) * H
+        
     elif method == 'crank':
         A = np.eye(nspace, dtype=complex) + 0.5j * tau * H
         B = np.eye(nspace, dtype=complex) - 0.5j * tau * H
@@ -142,14 +174,18 @@ def solve_schrodinger(psi0, H, nspace, ntime, tau, method):
     else:
         raise ValueError("Invalid method. Choose 'ftcs' or 'crank'.")
     
+    # Time evolution loop
     for itime in range(1, ntime + 1):
         if method == 'ftcs':
+            # Update wavefunction using FTCS method
             psi = psi + np.dot(H_coeff, psi)
+            
         else:  # Crank-Nicholson
+            # Solve matrix equation for next timestep
             rhs = np.dot(B, psi)
             psi = np.dot(A_inv, rhs)
         psi_xt[:, itime] = psi
-        total_prob[itime] = np.sum(np.abs(psi) ** 2)
+        total_prob[itime] = np.sum(np.abs(psi) ** 2) * h 
     
     return psi_xt, total_prob
 
@@ -161,25 +197,29 @@ def sch_eqn(nspace, ntime, tau, method='ftcs', length=200, potential=[], wparam=
     Solves the time-dependent Schrödinger equation using specified parameters.
 
     Parameters:
-        nspace (int): Number of spatial grid points.
-        ntime (int): Number of time steps to be evolved.
-        tau (float): Time step size.
-        method (str): Numerical method for time evolution ('ftcs' or 'crank'). Default is 'ftcs'.
-        length (float): Physical length of the spatial domain. Default is 200.
-        potential (list): List of spatial indices where the potential is applied. Default is an empty list (no potential).
-        wparam (list): Parameters for the initial wave packet [sigma0, x0, k0]. Default is [10, 0, 0.5].
+        nspace: Number of spatial grid points.
+        ntime: Number of time steps to be evolved.
+        tau : Time step size.
+        method: Numerical method for time evolution ('ftcs' or 'crank'). Default is 'ftcs'.
+        length: Physical length of the spatial domain. Default is 200.
+        potential: List of spatial indices where the potential is applied. Default is an empty list (no potential).
+        wparam: Parameters for the initial wave packet [sigma0, x0, k0]. Default is [10, 0, 0.5].
 
     Returns:
-        psi_xt (ndarray): Complex 2D array representing the wavefunction at each time step.
-        x (ndarray): Array of spatial grid points.
-        t (ndarray): Array of time grid points.
-        total_prob (ndarray): 1D array representing the total probability at each timestep.
+        psi_xt: Complex 2D array representing the wavefunction at each time step.
+        x: Array of spatial grid points.
+        t: Array of time grid points.
+        total_prob: 1D array representing the total probability at each timestep.
     """
+    
+    # Generate spatial grid, potential, Hamiltonian, and initial wavefunction
     x, h = create_spatial_grid(nspace, length)
     V = create_potential(nspace, potential)
     H = create_hamiltonian(nspace, h, V)
-    psi0 = initialize_wave_packet(x, wparam)
-    psi_xt, total_prob = solve_schrodinger(psi0, H, nspace, ntime, tau, method)
+    psi0 = initialize_wave_packet(x, wparam, h)
+    
+    # Solve the Schrödinger equation and return results
+    psi_xt, total_prob = solve_schrodinger(psi0, H, nspace, ntime, tau, method, h)
     t = np.linspace(0, ntime * tau, ntime + 1)
     return psi_xt, x, t, total_prob
 
@@ -197,8 +237,9 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
         time: The specific time at which to plot the solution.
 
     Returns:
-        None. Displays the specified plot.
+        Displays the specified plot.
     """
+    
     if time is None:
         raise ValueError("You must specify a time for the plot.")
     
@@ -220,7 +261,7 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
     else:
         raise ValueError("Invalid plot_type. Use 'psi' or 'prob'.")
     
-    # Configure plot appearance
+    # Plot
     plt.xlabel('x')
     plt.grid(True)
     plt.legend()
@@ -230,9 +271,11 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
 # User Input for Method, Plot Type, and Time Index
 method = input("Enter the numerical method ('ftcs' or 'crank'): ").strip().lower()
 plot_type = input("Enter the plot type ('psi' for real part of the wavefunction or 'prob' for probability density): ").strip().lower()
+# Extra
+show_plot = input("Display Total probability plot? (y/n): ").strip().lower()
 
 
-# Simulation parameters
+#Simulation parameters
 nspace = 2000
 ntime = 300
 tau = 0.0001
@@ -243,7 +286,24 @@ time = 0.3
 
 
 # Solve the Schrödinger equation
-psi_xt, x, t, _ = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
+psi_xt, x, t, total_prob = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
+
+
+
+
+# Quick plot for total probability conservation
+if show_plot == 'y':
+    plt.figure()
+    plt.plot(t, total_prob, label="Total Probability")
+    plt.axhline(y=1.0, color='r', linestyle='--', label="Expected Value (1.0)")
+    plt.title("Total Probability Conservation")
+    plt.xlabel("Time (t)")
+    plt.ylabel("Total Probability")
+    plt.yticks([-1, 0, 1, 2])
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
