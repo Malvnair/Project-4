@@ -33,9 +33,8 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
         psi_xt: Complex numpy array representing the wavefunction at each time step.
         x: Spatial grid points.
         t: Time grid points.
+        total_probability: 1D array of total probability at each time step.
     """
-    import numpy as np
-
     # Define constants for the problem
     h_bar = 1
     mass = 0.5
@@ -52,14 +51,14 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
     for potential_index in potential:
         if 0 <= potential_index < nspace:
             V[potential_index] = 1.0
-
+    
     # Define initial wave packet
     sigma0, x0, k0 = wparam
     Norm = 1.0 / (np.sqrt(sigma0 * np.sqrt(np.pi)))
     psi0 = Norm * np.exp(-(x - x0) ** 2 / (2 * sigma0 ** 2)) * np.exp(1j * k0 * x)
 
     # Create the Hamiltonian matrix
-    ham = np.zeros((nspace, nspace))
+    ham = np.zeros((nspace, nspace))  
     coeff = -h_bar ** 2 / (2 * mass * h ** 2)
 
     # Fill the Hamiltonian matrix with tridiagonal entries
@@ -74,19 +73,30 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
 
     # Add potential to the Hamiltonian
     H = ham + np.diag(V)
-
-    # Precompute the normalized Hamiltonian for FTCS method
-    H_coeff = (-1j * tau / h_bar) * H
+    
+    # Normalize H
+    eigenvalues_H, _ = np.linalg.eig(H)
+    H_normalized = H / max(abs(eigenvalues_H))
 
     # Initialize wavefunction storage
     psi_xt = np.zeros((nspace, ntime + 1), dtype=complex)
     psi_xt[:, 0] = psi0
     psi = psi0.copy()
 
+    # Array to track total probability
+    total_probability = np.zeros(ntime + 1)
+    total_probability[0] = np.sum(np.abs(psi0) ** 2)
+
     # Choose numerical method
     if method.lower() == 'ftcs':
-        # No changes needed in the loop for FTCS as we precompute H_coeff
-        pass
+        # Construct the evolution matrix
+        M = np.eye(H.shape[0]) + (-1j * tau / h_bar) * H_normalized
+
+        # Check for stability of the FTCS method
+        radius = max_abs_eigenvalue(M)
+        if radius - 1 > 1e-8:
+            print(f"FTCS scheme is unstable. Spectral radius: {radius:.2f}")
+            return psi_xt, x, t, total_probability
 
     elif method.lower() == 'crank':
         # Construct Crank-Nicolson matrices
@@ -98,17 +108,16 @@ def sch_eqn(nspace, ntime, tau, method, length=200, potential=[], wparam=[10, 0,
 
     # Perform time-stepping
     for itime in range(1, ntime + 1):
-        if method.lower() == 'ftcs':
-            # Use the precomputed coefficient for FTCS
-            psi = psi + np.dot(H_coeff, psi)
+        if method.lower() == 'ftcs':    
+            psi = psi + (-1j * tau) * np.dot(H, psi)
         else:
-            rhs = np.dot(B, psi)
-            psi = np.dot(A_inv, rhs)
+            rhs = np.dot(B, psi)    
+            psi = np.dot(A_inv, rhs)  
 
         psi_xt[:, itime] = psi
+        total_probability[itime] = np.sum(np.abs(psi) ** 2)
 
-    return psi_xt, x, t
-
+    return psi_xt, x, t, total_probability
 
 
 def schro_plot(x, t, psi_xt, plot_type, time=None):
@@ -128,7 +137,6 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
     if time is None:
         raise ValueError("You must specify a time for the plot.")
     
-    # Code is modified from the schro.py code from the NM4P programs
     # Determine the closest time index
     time_index = np.abs(t - time).argmin()
 
@@ -137,11 +145,11 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
         # Plot the real part of the wavefunction
         plt.plot(x, np.real(psi_xt[:, time_index]), label='Real')
         plt.title(f'Real Part of Wavefunction at t={t[time_index]:.3f}')
-        plt.ylabel('Re[ψ(x)]')
+        plt.ylabel('Re[\u03c8(x)]')
     elif plot_type.lower() == 'prob':
         # Plot the probability density
         prob_density = np.abs(psi_xt[:, time_index]) ** 2
-        plt.plot(x, prob_density, label='|ψ|²')
+        plt.plot(x, prob_density, label='|\u03c8|\u00b2')
         plt.title(f'Probability Density at t={t[time_index]:.3f}')
         plt.ylabel('Probability density')
     else:
@@ -153,6 +161,25 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
     plt.legend()
     plt.show()
 
+def total_probability_plot(t, total_probability):
+    """
+    Plots the total probability as a function of time.
+
+    Parameters:
+        t: Array of time grid points.
+        total_probability: Array of total probability at each time step.
+
+    Returns:
+        None. Displays the specified plot.
+    """
+    plt.figure()
+    plt.plot(t, total_probability, label='Total Probability')
+    plt.xlabel('Time')
+    plt.ylabel('Total Probability')
+    plt.title('Total Probability vs. Time')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 # User Input for Method, Plot Type, and Time Index
 method = input("Enter the numerical method ('ftcs' or 'crank'): ").strip().lower()
@@ -167,11 +194,11 @@ potential = []
 wparam = [10, 0, 0.5]
 time = 0.3
 
-
-
-
 # Solve the Schrödinger equation
-psi_xt, x, t = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
+psi_xt, x, t, total_probability = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
 
 # Plot the solution
 schro_plot(x, t, psi_xt, plot_type=plot_type, time=time)
+
+# Plot the total probability
+total_probability_plot(t, total_probability)
