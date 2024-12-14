@@ -254,7 +254,7 @@ def schro_plot(x, t, psi_xt, plot_type, time=None):
 method = input("Enter the numerical method ('ftcs' or 'crank'): ").strip().lower()
 plot_type = input("Enter the plot type ('psi' for real part of the wavefunction or 'prob' for probability density): ").strip().lower()
 # Extra
-show_plot = input("Display Total probability plot? (y/n): ").strip().lower()
+show_plot = input("Display total probability plot? (y/n): ").strip().lower()
 
 # Simulation parameters
 nspace = 2000
@@ -263,7 +263,8 @@ tau = 0.0001
 length = 200
 potential = []
 wparam = [10, 0, 0.5]
-time = 0.3
+# tmax = ntime*tau
+time = 0.03
 
 # Solve the Schrödinger equation
 psi_xt, x, t, total_prob = sch_eqn(nspace, ntime, tau, method, length=length, potential=potential, wparam=wparam)
